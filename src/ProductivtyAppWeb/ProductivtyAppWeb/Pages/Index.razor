@@ -1,0 +1,131 @@
+﻿@page "/"
+
+@using ProductivtyAppWeb.Model
+@using ProductivtyAppWeb.Data
+@using System.Threading
+@inject TimerService TimeService
+@inject IJSRuntime JSRuntime
+
+<h1>Welcome to (10+2) *5</h1>
+
+Welcome to your new app.
+
+
+<h1>@data.Message</h1>
+
+<button hidden="@data.StartButtonHidden" @onclick="@StartButton">Start</button>
+<button hidden="@data.BreakButtonHidden" @onclick="@BreakButton">Break</button>
+<button hidden="@data.StopButtonHidden" @onclick="@StopButton">Stop</button>
+
+<p>App based on this <a href="http://www.43folders.com/2005/10/11/procrastination-hack-1025">article</a></p>
+
+<p>Author:  <a href="https://thebrokentest.com/">Maciej Wyrodek</a></p>
+<p> SoundEffect By <a href="http://soundbible.com/2218-Service-Bell-Help.html">Daniel Simion</a></p>
+
+
+@code{
+    public static ProductivityData data = new ProductivityData();
+    static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+    static CancellationToken token = cancellationTokenSource.Token;
+
+    public async Task StartButton()
+    {
+        data.CurrentPhaseNumber = 0;
+        SetProductiveState();
+        while (data.CurrentPhaseNumber < data.MaxPhaseNumber)
+        {
+            var WaitTime = SelectWaitTime();
+            await TimeService.Wait(WaitTime, token);
+            //await TimeService.Wait(TimeSpan.FromSeconds(20), token);
+            PlaySound();
+            ChangeAppState();
+            ResetToken();
+        }
+        SetDoneState();
+    }
+
+    public async Task BreakButton()
+    {
+
+        SetBreakState();
+        cancellationTokenSource.Cancel();
+    }
+
+    public async Task StopButton()
+    {
+
+        SetDoneState();
+        cancellationTokenSource.Cancel();
+    }
+
+    public void SetProductiveState()
+    {
+        data.StartButtonHidden = true;
+        data.BreakButtonHidden = false;
+        data.StopButtonHidden = false;
+        data.Message = "Work!";
+        data.CurrentState = ProductivityState.PRODUCTIVE;
+        StateHasChanged();
+    }
+    public void SetBreakState()
+    {
+        data.StartButtonHidden = true;
+        data.BreakButtonHidden = true;
+        data.StopButtonHidden = false;
+        data.CurrentState = ProductivityState.BREAK;
+        data.Message = "Break!";
+        StateHasChanged();
+    }
+
+    public void SetDoneState()
+    {
+        data.StartButtonHidden = false;
+        data.BreakButtonHidden = true;
+        data.StopButtonHidden = true;
+        data.CurrentState = ProductivityState.DONE;
+        data.Message = "Done! Another Round?";
+        StateHasChanged();
+    }
+
+
+    private TimeSpan SelectWaitTime()
+    {
+        if (ProductivityState.BREAK == data.CurrentState)
+        {
+            return data.BreakLength;
+        }
+        else if (ProductivityState.BREAK == data.CurrentState)
+        {
+            return data.ProductivtyLength;
+        }
+        else
+        {
+            return TimeSpan.Zero;
+        }
+    }
+
+    private void ChangeAppState()
+    {
+        switch (data.CurrentState)
+        {
+            case ProductivityState.BREAK:
+                SetProductiveState();
+                data.CurrentPhaseNumber++;
+                break;
+            case ProductivityState.PRODUCTIVE:
+                SetBreakState();
+                break;
+        }
+    }
+
+    private void ResetToken()
+    {
+        cancellationTokenSource = new CancellationTokenSource();
+        token = cancellationTokenSource.Token;
+    }
+
+    private async void PlaySound()
+    {
+        await JSRuntime.InvokeAsync<object>("PlayBell");
+    }
+}
