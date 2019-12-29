@@ -3,4 +3,4 @@
 Simple blazor Productivity app  based on (10+2)*5 method
 
 
-
+Explanation in [this article](https://thebrokentest.com/12-program-challenge-5-chain-analyzer-done/)
